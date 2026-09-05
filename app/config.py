@@ -19,6 +19,8 @@ class Settings:
     jira_token: str
     jira_project: str
     jira_organisation_field: str
+    jira_customer_field: str
+    jira_cab_organisation: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,6 +43,8 @@ class Settings:
             int(os.environ.get("SYNC_OVERLAP_SECONDS", "300")),
             os.environ.get("REDACT_DESCRIPTIONS", "true").lower() not in {"0", "false", "no"},
             jira_domain, jira_email, jira_token,
-            os.environ.get("JIRA_JQL_PROJECT", "CS"),
+            os.environ.get("JIRA_JQL_PROJECT", ""),
             os.environ.get("JIRA_ORGANISATION_FIELD", "customfield_10002"),
+            os.environ.get("JIRA_CUSTOMER_FIELD", "customfield_10070"),
+            os.environ.get("JIRA_CAB_ORGANISATION", "Sorted Group"),
         )

@@ -5,7 +5,7 @@ from typing import Any
 from .config import Settings
 from .db import upsert_raw
 from .tempo_client import TempoClient
-from .jira_client import JiraClient
+from .jira_client import JiraClient, field_names
 
 log = logging.getLogger(__name__)
 
@@ -41,19 +41,26 @@ def sync_once(conn, client: TempoClient, settings: Settings):
     jira_updated_from = jira_row[0] if jira_row else settings.initial_from.isoformat()
     try:
         jira = JiraClient(settings.jira_domain, settings.jira_email, settings.jira_token)
-        scope = settings.jira_project or "*"
+        scope = f"{settings.jira_project or '*'}|cab-default-v1|co-customer-{settings.jira_customer_field}"
         use_created = jira_row is None or not jira_scope_row or jira_scope_row[0] != scope
-        for issue in jira.search_issues(since=settings.initial_from.isoformat() if use_created else jira_updated_from, project=settings.jira_project, organisation_field=settings.jira_organisation_field, use_created=use_created):
+        for issue in jira.search_issues(since=settings.initial_from.isoformat() if use_created else jira_updated_from, project=settings.jira_project, organisation_field=settings.jira_organisation_field, customer_field=settings.jira_customer_field, use_created=use_created):
             fields = issue.get("fields", {})
             issue_id = str(issue.get("id"))
-            orgs = fields.get(settings.jira_organisation_field) or []
-            org_names = [o.get("name") for o in orgs if isinstance(o, dict) and o.get("name")]
+            project_key = (fields.get("project") or {}).get("key")
+            org_names = field_names(fields.get(settings.jira_organisation_field))
+            customer_names = field_names(fields.get(settings.jira_customer_field))
+            if project_key == "CAB":
+                org_names = [settings.jira_cab_organisation]
+            if project_key == "CO":
+                org_names = []
             payload = {"id": issue_id, "key": issue.get("key"), "fields": fields}
             upsert_raw(conn, "jira_issues", issue_id, payload, source="/rest/api/3/search/jql")
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO jira_issue_details (issue_id, issue_key, project_key, organisation, payload) VALUES (%s,%s,%s,%s,%s) ON CONFLICT (issue_id) DO UPDATE SET issue_key=EXCLUDED.issue_key, project_key=EXCLUDED.project_key, organisation=EXCLUDED.organisation, payload=EXCLUDED.payload, fetched_at=now()", (issue_id, issue.get("key"), (fields.get("project") or {}).get("key"), org_names[0] if org_names else None, json.dumps(payload)))
+                cur.execute("INSERT INTO jira_issue_details (issue_id, issue_key, project_key, organisation, customer, payload) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (issue_id) DO UPDATE SET issue_key=EXCLUDED.issue_key, project_key=EXCLUDED.project_key, organisation=EXCLUDED.organisation, customer=EXCLUDED.customer, payload=EXCLUDED.payload, fetched_at=now()", (issue_id, issue.get("key"), project_key, org_names[0] if org_names else None, customer_names[0] if customer_names else None, json.dumps(payload)))
                 cur.execute("DELETE FROM jira_issue_organisations WHERE issue_id=%s", (issue_id,))
                 cur.executemany("INSERT INTO jira_issue_organisations (issue_id, organisation) VALUES (%s,%s)", [(issue_id, name) for name in org_names])
+                cur.execute("DELETE FROM jira_issue_customers WHERE issue_id=%s", (issue_id,))
+                cur.executemany("INSERT INTO jira_issue_customers (issue_id, customer) VALUES (%s,%s)", [(issue_id, name) for name in customer_names])
         with conn.cursor() as cur:
             cur.execute("INSERT INTO sync_state(key,value) VALUES ('jira_updated_from', %s) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value", (_rewound_watermark(settings.overlap_seconds),))
             cur.execute("INSERT INTO sync_state(key,value) VALUES ('jira_scope', %s) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value", (scope,))
