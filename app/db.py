@@ -13,9 +13,17 @@ def connect():
 
 
 def migrate(conn):
-    sql = (Path(__file__).parent.parent / "migrations" / "001_initial.sql").read_text()
+    migration_dir = Path(__file__).parent.parent / "migrations"
     with conn.cursor() as cur:
-        cur.execute(sql)
+        cur.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())")
+        cur.execute("SELECT version FROM schema_migrations")
+        applied = {row[0] for row in cur.fetchall()}
+        for path in sorted(migration_dir.glob("*.sql")):
+            version = path.name
+            if version in applied:
+                continue
+            cur.execute(path.read_text())
+            cur.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (version,))
     conn.commit()
 
 

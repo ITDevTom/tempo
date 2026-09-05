@@ -5,11 +5,13 @@ Docker Compose worker that imports Tempo Support-team worklogs and Jira issues i
 ## Data flow
 
 ```text
-Tempo worklog → Jira issue ID → Jira organisation
+Tempo worklog → Jira issue ID → Jira organisation/customer
              → Atlassian user → effective-dated salary → cost
 ```
 
 Jira organisations and Tempo Accounts remain separate dimensions. Tempo Account data is retained independently.
+
+Jira mapping defaults: `CAB` tickets use organisation `Sorted Group`; `CO` tickets use Jira customer field `customfield_10070`.
 
 ## Setup
 
