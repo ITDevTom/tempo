@@ -21,6 +21,9 @@ class Settings:
     jira_organisation_field: str
     jira_customer_field: str
     jira_cab_organisation: str
+    jira_leave_issues: tuple[str, ...]
+    jira_internal_issues: tuple[str, ...]
+    jira_training_issues: tuple[str, ...]
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -47,4 +50,7 @@ class Settings:
             os.environ.get("JIRA_ORGANISATION_FIELD", "customfield_10002"),
             os.environ.get("JIRA_CUSTOMER_FIELD", "customfield_10070"),
             os.environ.get("JIRA_CAB_ORGANISATION", "Sorted Group"),
+            tuple(x.strip() for x in os.environ.get("JIRA_LEAVE_ISSUES", "CS-259").split(",") if x.strip()),
+            tuple(x.strip() for x in os.environ.get("JIRA_INTERNAL_ISSUES", "CS-35").split(",") if x.strip()),
+            tuple(x.strip() for x in os.environ.get("JIRA_TRAINING_ISSUES", "CS-670").split(",") if x.strip()),
         )
