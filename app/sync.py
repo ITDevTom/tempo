@@ -124,24 +124,45 @@ def sync_once(conn, client: TempoClient, settings: Settings):
         log.info("looking up support-member names: candidates=%d", len(support_member_ids))
         resolved_members = 0
         failed_member_lookups = 0
+        seeded_salary_rows = 0
         for account_id in sorted(support_member_ids):
             with conn.cursor() as cur:
                 cur.execute("SELECT payload->>'displayName' FROM users WHERE tempo_id=%s", (account_id,))
                 row = cur.fetchone()
-            if row and row[0]:
+            display_name = row[0] if row else None
+            with conn.cursor() as cur:
+                cur.execute("SELECT EXISTS (SELECT 1 FROM support_member_salaries WHERE user_id=%s)", (account_id,))
+                has_salary_history = cur.fetchone()[0]
+            if display_name and not has_salary_history:
                 resolved_members += 1
-                continue
-            try:
-                user = jira.get_user(account_id)
-                upsert_raw(conn, "users", account_id, user, source="/rest/api/3/user")
-                if user.get("displayName"):
-                    resolved_members += 1
-                else:
+            else:
+                try:
+                    user = jira.get_user(account_id)
+                    upsert_raw(conn, "users", account_id, user, source="/rest/api/3/user")
+                    display_name = user.get("displayName")
+                    if display_name:
+                        resolved_members += 1
+                    else:
+                        failed_member_lookups += 1
+                except Exception as exc:
                     failed_member_lookups += 1
-            except Exception as exc:
-                failed_member_lookups += 1
-                log.warning("support-member lookup failed for %s: %s", account_id, exc)
-        log.info("support-member names resolved: resolved=%d failed=%d", resolved_members, failed_member_lookups)
+                    log.warning("support-member lookup failed for %s: %s", account_id, exc)
+            if display_name:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO support_member_salaries "
+                        "(user_id, effective_from, annual_salary, currency, annual_working_hours, display_name, notes) "
+                        "VALUES (%s, %s, 0, 'GBP', 2080, %s, 'Pending salary input') "
+                        "ON CONFLICT (user_id, effective_from) DO NOTHING",
+                        (account_id, settings.initial_from, display_name),
+                    )
+                    seeded_salary_rows += cur.rowcount
+        log.info(
+            "support-member names resolved: resolved=%d failed=%d salary_rows_seeded=%d",
+            resolved_members,
+            failed_member_lookups,
+            seeded_salary_rows,
+        )
         # Financial project facts have no updatedFrom filter in this API; upsert all pages each run.
         for project in projects:
             pid = str(project["id"])
