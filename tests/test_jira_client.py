@@ -26,3 +26,11 @@ def test_jql_can_limit_to_project(monkeypatch):
     monkeypatch.setattr(client, '_get', lambda path, params: (seen.update(params) or {'issues': []}))
     list(client.search_issues(since='2022-01-01', project='CS', organisation_field='customfield_10002', customer_field='customfield_10070', use_created=True))
     assert seen['jql'].startswith('project = CS AND')
+
+
+def test_get_user_looks_up_account_id(monkeypatch):
+    client = JiraClient('example.atlassian.net', 'u', 't')
+    seen = {}
+    monkeypatch.setattr(client, '_get', lambda path, params: (seen.update(path=path, params=params) or {'displayName': 'Support Member'}))
+    assert client.get_user('account-123')['displayName'] == 'Support Member'
+    assert seen == {'path': '/rest/api/3/user', 'params': {'accountId': 'account-123'}}

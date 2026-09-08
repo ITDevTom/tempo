@@ -42,6 +42,9 @@ def sync_once(conn, client: TempoClient, settings: Settings):
     try:
         jira = JiraClient(settings.jira_domain, settings.jira_email, settings.jira_token)
         with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT author_id FROM worklog_facts WHERE author_id IS NOT NULL")
+            support_member_ids = {row[0] for row in cur.fetchall()}
+        with conn.cursor() as cur:
             cur.execute("SELECT lower(source_value), canonical_customer FROM jira_customer_mappings WHERE active")
             customer_mappings = dict(cur.fetchall())
             cur.execute("SELECT issue_key FROM jira_leave_issues WHERE active")
@@ -110,11 +113,35 @@ def sync_once(conn, client: TempoClient, settings: Settings):
             wid = str(item["tempoWorklogId"])
             support_worklog_ids.add(wid)
             upsert_raw(conn, "worklogs", wid, item, source="/4/worklogs/team/{id}")
+            author_id = (item.get("author") or {}).get("accountId")
+            if author_id:
+                support_member_ids.add(author_id)
             with conn.cursor() as cur:
                 cur.execute("INSERT INTO worklog_facts (tempo_id, worklog_date, seconds, billable_seconds, author_id, issue_id, project_id, payload) "
                             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (tempo_id) DO UPDATE SET worklog_date=EXCLUDED.worklog_date, seconds=EXCLUDED.seconds, billable_seconds=EXCLUDED.billable_seconds, issue_id=EXCLUDED.issue_id, project_id=EXCLUDED.project_id, payload=EXCLUDED.payload",
                             (wid, item.get("startDate"), item.get("timeSpentSeconds", 0), item.get("billableSeconds", 0),
-                             (item.get("author") or {}).get("accountId"), (item.get("issue") or {}).get("id"), (item.get("issue") or {}).get("projectId"), json.dumps(item)))
+                             author_id, (item.get("issue") or {}).get("id"), (item.get("issue") or {}).get("projectId"), json.dumps(item)))
+        log.info("looking up support-member names: candidates=%d", len(support_member_ids))
+        resolved_members = 0
+        failed_member_lookups = 0
+        for account_id in sorted(support_member_ids):
+            with conn.cursor() as cur:
+                cur.execute("SELECT payload->>'displayName' FROM users WHERE tempo_id=%s", (account_id,))
+                row = cur.fetchone()
+            if row and row[0]:
+                resolved_members += 1
+                continue
+            try:
+                user = jira.get_user(account_id)
+                upsert_raw(conn, "users", account_id, user, source="/rest/api/3/user")
+                if user.get("displayName"):
+                    resolved_members += 1
+                else:
+                    failed_member_lookups += 1
+            except Exception as exc:
+                failed_member_lookups += 1
+                log.warning("support-member lookup failed for %s: %s", account_id, exc)
+        log.info("support-member names resolved: resolved=%d failed=%d", resolved_members, failed_member_lookups)
         # Financial project facts have no updatedFrom filter in this API; upsert all pages each run.
         for project in projects:
             pid = str(project["id"])

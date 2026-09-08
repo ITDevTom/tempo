@@ -50,6 +50,9 @@ class JiraClient:
                 return
             params["nextPageToken"] = token
 
+    def get_user(self, account_id: str) -> dict[str, Any]:
+        return self._get("/rest/api/3/user", {"accountId": account_id})
+
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         for attempt in range(self.retries):
             try:
