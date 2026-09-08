@@ -41,7 +41,16 @@ def sync_once(conn, client: TempoClient, settings: Settings):
     jira_updated_from = jira_row[0] if jira_row else settings.initial_from.isoformat()
     try:
         jira = JiraClient(settings.jira_domain, settings.jira_email, settings.jira_token)
-        scope = f"{settings.jira_project or '*'}|cab-default-v1|co-customer-{settings.jira_customer_field}"
+        with conn.cursor() as cur:
+            cur.execute("SELECT lower(source_value), canonical_customer FROM jira_customer_mappings WHERE active")
+            customer_mappings = dict(cur.fetchall())
+            cur.execute("SELECT issue_key FROM jira_leave_issues WHERE active")
+            leave_issues = {row[0] for row in cur.fetchall()} | set(settings.jira_leave_issues)
+            cur.execute("SELECT issue_key, work_category FROM jira_internal_issues WHERE active")
+            internal_issues = dict(cur.fetchall())
+            internal_issues.update({key: "internal_meeting" for key in settings.jira_internal_issues})
+            internal_issues.update({key: "training" for key in settings.jira_training_issues})
+        scope = f"{settings.jira_project or '*'}|cab-default-v1|co-customer-{settings.jira_customer_field}|customer-map-v1|leave-v1|internal-v1|training-v1"
         use_created = jira_row is None or not jira_scope_row or jira_scope_row[0] != scope
         for issue in jira.search_issues(since=settings.initial_from.isoformat() if use_created else jira_updated_from, project=settings.jira_project, organisation_field=settings.jira_organisation_field, customer_field=settings.jira_customer_field, use_created=use_created):
             fields = issue.get("fields", {})
@@ -53,10 +62,17 @@ def sync_once(conn, client: TempoClient, settings: Settings):
                 org_names = [settings.jira_cab_organisation]
             if project_key == "CO":
                 org_names = []
+            issue_key = issue.get("key")
+            raw_customer = customer_names[0] if customer_names else (org_names[0] if org_names else None)
+            canonical_customer = customer_mappings.get((raw_customer or "").lower(), raw_customer)
+            work_category = "leave" if issue_key in leave_issues else internal_issues.get(issue_key, "charged" if project_key == "CO" else "support")
+            if work_category in {"leave", "internal_meeting", "training"}:
+                org_names = []
+                canonical_customer = None
             payload = {"id": issue_id, "key": issue.get("key"), "fields": fields}
             upsert_raw(conn, "jira_issues", issue_id, payload, source="/rest/api/3/search/jql")
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO jira_issue_details (issue_id, issue_key, project_key, organisation, customer, payload) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (issue_id) DO UPDATE SET issue_key=EXCLUDED.issue_key, project_key=EXCLUDED.project_key, organisation=EXCLUDED.organisation, customer=EXCLUDED.customer, payload=EXCLUDED.payload, fetched_at=now()", (issue_id, issue.get("key"), project_key, org_names[0] if org_names else None, customer_names[0] if customer_names else None, json.dumps(payload)))
+                cur.execute("INSERT INTO jira_issue_details (issue_id, issue_key, project_key, organisation, customer, canonical_customer, work_category, payload) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (issue_id) DO UPDATE SET issue_key=EXCLUDED.issue_key, project_key=EXCLUDED.project_key, organisation=EXCLUDED.organisation, customer=EXCLUDED.customer, canonical_customer=EXCLUDED.canonical_customer, work_category=EXCLUDED.work_category, payload=EXCLUDED.payload, fetched_at=now()", (issue_id, issue_key, project_key, org_names[0] if org_names else None, customer_names[0] if customer_names else None, canonical_customer, work_category, json.dumps(payload)))
                 cur.execute("DELETE FROM jira_issue_organisations WHERE issue_id=%s", (issue_id,))
                 cur.executemany("INSERT INTO jira_issue_organisations (issue_id, organisation) VALUES (%s,%s)", [(issue_id, name) for name in org_names])
                 cur.execute("DELETE FROM jira_issue_customers WHERE issue_id=%s", (issue_id,))

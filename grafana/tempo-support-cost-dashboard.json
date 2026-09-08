@@ -10,7 +10,7 @@
       "title": "Support cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost), 0) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date);", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost), 0) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date);", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2, "color": {"mode": "thresholds"}}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
     },
@@ -20,7 +20,7 @@
       "title": "Support hours",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(hours), 0) AS hours FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date);", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(hours), 0) AS hours FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date);", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "h", "decimals": 2}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
     },
@@ -30,7 +30,7 @@
       "title": "Effective hourly cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost) / NULLIF(SUM(hours), 0), 0) AS hourly_cost_gbp FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date);", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost) / NULLIF(SUM(hours), 0), 0) AS hourly_cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date);", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
     },
@@ -40,7 +40,7 @@
       "title": "Unassigned cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost), 0) AS unassigned_cost_gbp FROM grafana_cost_by_jira_ticket WHERE organisation = 'Unassigned' AND $__timeFilter(worklog_date);", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost), 0) AS unassigned_cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND organisation = 'Unassigned' AND $__timeFilter(worklog_date);", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2, "color": {"mode": "thresholds", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1000}, {"color": "red", "value": 10000}]}}}, "overrides": []},
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
     },
@@ -50,7 +50,7 @@
       "title": "Monthly support cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
-      "targets": [{"format": "time_series", "rawSql": "SELECT $__timeGroupAlias(worklog_date, '1M'), SUM(salary_cost) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date) GROUP BY 1 ORDER BY 1;", "refId": "A"}],
+      "targets": [{"format": "time_series", "rawSql": "SELECT $__timeGroupAlias(worklog_date, '1M'), SUM(salary_cost) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date) GROUP BY 1 ORDER BY 1;", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2}, "overrides": []},
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum", "mean"]}, "tooltip": {"mode": "multi"}}
     },
@@ -60,7 +60,7 @@
       "title": "Monthly hours and billable hours",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-      "targets": [{"format": "time_series", "rawSql": "SELECT $__timeGroupAlias(worklog_date, '1M'), SUM(hours) AS hours, SUM(billable_hours) AS billable_hours FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date) GROUP BY 1 ORDER BY 1;", "refId": "A"}],
+      "targets": [{"format": "time_series", "rawSql": "SELECT $__timeGroupAlias(worklog_date, '1M'), SUM(hours) AS hours, SUM(billable_hours) AS billable_hours FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date) GROUP BY 1 ORDER BY 1;", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "h", "decimals": 2}, "overrides": []},
       "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum", "mean"]}, "tooltip": {"mode": "multi"}}
     },
@@ -70,7 +70,7 @@
       "title": "Top organisations by support cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 12},
-      "targets": [{"format": "table", "rawSql": "SELECT organisation, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(DISTINCT jira_ticket) AS tickets FROM grafana_cost_by_jira_ticket WHERE organisation <> 'Unassigned' AND $__timeFilter(worklog_date) GROUP BY organisation ORDER BY SUM(salary_cost) DESC LIMIT 20;", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT organisation, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(DISTINCT jira_ticket) AS tickets FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND organisation <> 'Unassigned' AND $__timeFilter(worklog_date) GROUP BY organisation ORDER BY SUM(salary_cost) DESC LIMIT 20;", "refId": "A"}],
       "fieldConfig": {"defaults": {"custom": {"align": "auto", "displayMode": "auto"}}, "overrides": []},
       "options": {"showHeader": true, "footer": {"show": true, "reducer": ["sum"]}}
     },
@@ -80,7 +80,7 @@
       "title": "Top Jira tickets by cost",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 12},
-      "targets": [{"format": "table", "rawSql": "SELECT jira_ticket, organisation, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(*) AS worklogs FROM grafana_cost_by_jira_ticket WHERE jira_ticket IS NOT NULL AND $__timeFilter(worklog_date) GROUP BY jira_ticket, organisation ORDER BY SUM(salary_cost) DESC LIMIT 20;", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT jira_ticket, organisation, work_category, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(*) AS worklogs FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND jira_ticket IS NOT NULL AND $__timeFilter(worklog_date) GROUP BY jira_ticket, organisation, work_category ORDER BY SUM(salary_cost) DESC LIMIT 20;", "refId": "A"}],
       "fieldConfig": {"defaults": {"custom": {"align": "auto", "displayMode": "auto"}}, "overrides": []},
       "options": {"showHeader": true, "footer": {"show": true, "reducer": ["sum"]}}
     },
@@ -90,7 +90,7 @@
       "title": "Unassigned work requiring Jira organisation",
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
-      "targets": [{"format": "table", "rawSql": "SELECT jira_ticket, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(*) AS worklogs FROM grafana_cost_by_jira_ticket WHERE organisation = 'Unassigned' AND $__timeFilter(worklog_date) GROUP BY jira_ticket ORDER BY SUM(salary_cost) DESC LIMIT 50;", "refId": "A"}],
+      "targets": [{"format": "table", "rawSql": "SELECT jira_ticket, raw_customer, raw_organisation, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(hours)::numeric, 2) AS hours, COUNT(*) AS worklogs FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND organisation = 'Unassigned' AND $__timeFilter(worklog_date) GROUP BY jira_ticket, raw_customer, raw_organisation ORDER BY SUM(salary_cost) DESC LIMIT 50;", "refId": "A"}],
       "fieldConfig": {"defaults": {}, "overrides": []},
       "options": {"showHeader": true}
     },
@@ -101,6 +101,86 @@
       "datasource": "Tempo PostgreSQL",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
       "targets": [{"format": "table", "rawSql": "SELECT id, status, started_at, finished_at, latest_worklog_fetch, worklog_count, labor_fact_count, error FROM grafana_sync_health ORDER BY id DESC LIMIT 10;", "refId": "A"}],
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true}
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "CO charged-work cost",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 29},
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(salary_cost), 0) AS charged_cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category = 'charged' AND $__timeFilter(worklog_date);", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Billable percentage",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 29},
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(billable_hours) / NULLIF(SUM(hours), 0) * 100, 0) AS billable_percent FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND $__timeFilter(worklog_date);", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Leave hours",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 29},
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(hours), 0) AS leave_hours FROM grafana_cost_by_jira_ticket WHERE work_category = 'leave' AND $__timeFilter(worklog_date);", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "h", "decimals": 2}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Internal hours",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 29},
+      "targets": [{"format": "table", "rawSql": "SELECT COALESCE(SUM(hours), 0) AS internal_hours FROM grafana_cost_by_jira_ticket WHERE work_category IN ('internal_meeting', 'training') AND $__timeFilter(worklog_date);", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "h", "decimals": 2}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "id": 15,
+      "type": "barchart",
+      "title": "Customer cost",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 33},
+      "targets": [{"format": "table", "rawSql": "SELECT organisation, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE work_category IN ('support', 'charged') AND organisation <> 'Unassigned' AND $__timeFilter(worklog_date) GROUP BY organisation ORDER BY cost_gbp DESC LIMIT 20;", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2}, "overrides": []},
+      "options": {"orientation": "horizontal", "xTickLabelRotation": 0, "showValue": "auto", "legend": {"displayMode": "hidden"}}
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Monthly cost by work category",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 33},
+      "targets": [{"format": "time_series", "rawSql": "SELECT $__timeGroupAlias(worklog_date, '1M'), work_category, SUM(salary_cost) AS cost_gbp FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date) GROUP BY 1, 2 ORDER BY 1;", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "currencyGBP", "decimals": 2}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum", "mean"]}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Internal work breakdown",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 41},
+      "targets": [{"format": "table", "rawSql": "SELECT work_category, ROUND(SUM(hours)::numeric, 2) AS hours, ROUND(SUM(salary_cost)::numeric, 2) AS reported_cost_gbp, COUNT(DISTINCT jira_ticket) AS tickets FROM grafana_cost_by_jira_ticket WHERE work_category IN ('leave', 'internal_meeting', 'training') AND $__timeFilter(worklog_date) GROUP BY work_category ORDER BY hours DESC;", "refId": "A"}],
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "options": {"showHeader": true}
+    },
+    {
+      "id": 18,
+      "type": "table",
+      "title": "Work by support member",
+      "datasource": "Tempo PostgreSQL",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 41},
+      "targets": [{"format": "table", "rawSql": "SELECT support_member, ROUND(SUM(hours)::numeric, 2) AS hours, ROUND(SUM(salary_cost)::numeric, 2) AS cost_gbp, ROUND(SUM(CASE WHEN work_category IN ('support', 'charged') THEN hours ELSE 0 END)::numeric, 2) AS customer_hours, ROUND(SUM(CASE WHEN work_category IN ('leave', 'internal_meeting', 'training') THEN hours ELSE 0 END)::numeric, 2) AS non_customer_hours FROM grafana_cost_by_jira_ticket WHERE $__timeFilter(worklog_date) GROUP BY support_member ORDER BY cost_gbp DESC;", "refId": "A"}],
       "fieldConfig": {"defaults": {}, "overrides": []},
       "options": {"showHeader": true}
     }

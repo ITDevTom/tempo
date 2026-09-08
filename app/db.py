@@ -41,6 +41,8 @@ def configure_grafana_reader(conn):
         "grafana_support_hours_by_jira_organisation",
         "grafana_cost_by_jira_ticket",
         "grafana_sync_health",
+        "grafana_support_leave",
+        "grafana_support_internal",
     ]
     with conn.cursor() as cur:
         cur.execute(sql.SQL("DO $$ BEGIN CREATE ROLE {} LOGIN PASSWORD {}; EXCEPTION WHEN duplicate_object THEN NULL; END $$").format(sql.Identifier(user), sql.Literal(password)))
