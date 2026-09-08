@@ -40,6 +40,7 @@ FROM worklog_facts w
 LEFT JOIN jira_issue_details j ON j.issue_id = w.issue_id
 GROUP BY 1,2,3;
 
+-- CREATE OR REPLACE VIEW preserves existing column positions; append new fields.
 CREATE OR REPLACE VIEW grafana_cost_by_jira_ticket AS
 SELECT w.tempo_id AS tempo_worklog_id, w.issue_id AS jira_issue_id,
        j.issue_key AS jira_ticket,
@@ -47,15 +48,15 @@ SELECT w.tempo_id AS tempo_worklog_id, w.issue_id AS jira_issue_id,
             WHEN j.canonical_customer IS NOT NULL THEN j.canonical_customer
             WHEN j.project_key = 'CO' THEN COALESCE(j.customer, 'Unassigned')
             ELSE COALESCE(j.organisation, 'Unassigned') END AS organisation,
-       COALESCE(j.work_category, 'unassigned') AS work_category,
-       j.customer AS raw_customer, j.organisation AS raw_organisation,
        w.author_id AS atlassian_user_id,
        COALESCE(s.display_name, w.author_id) AS support_member,
        w.worklog_date, w.seconds / 3600.0 AS hours,
        w.billable_seconds / 3600.0 AS billable_hours,
        s.currency, s.annual_salary,
        CASE WHEN j.work_category = 'leave' THEN 0
-            ELSE w.seconds / 3600.0 * s.annual_salary / s.annual_working_hours END AS salary_cost
+            ELSE w.seconds / 3600.0 * s.annual_salary / s.annual_working_hours END AS salary_cost,
+       COALESCE(j.work_category, 'unassigned') AS work_category,
+       j.customer AS raw_customer, j.organisation AS raw_organisation
 FROM worklog_facts w
 LEFT JOIN jira_issue_details j ON j.issue_id = w.issue_id
 LEFT JOIN LATERAL (SELECT * FROM support_member_salaries s0
